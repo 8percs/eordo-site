@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E-Prescription</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    background: #f2f5f8; margin: 0; padding: 0;
+    display: flex; justify-content: center;
+  }
+  .carte {
+    background: #fff; max-width: 480px; width: 92%; margin: 32px 0;
+    border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.08); padding: 28px;
+  }
+  h1 { font-size: 1.3rem; color: #1a3a5c; margin: 0 0 4px; }
+  .ref { color: #888; font-size: .85rem; margin-bottom: 20px; }
+  dl { margin: 0; }
+  dt { font-size: .78rem; color: #888; text-transform: uppercase;
+       letter-spacing: .03em; margin-top: 14px; }
+  dd { margin: 2px 0 0; font-size: 1.05rem; color: #222; font-weight: 600; }
+
+  .valider {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; margin-top: 28px; padding: 14px; border: none; border-radius: 8px;
+    background: #1565c0; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+  .valider:hover { background: #0d47a1; }
+  .valider:disabled { background: #90a4b8; cursor: default; }
+  .valider svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .confirmation {
+    margin-top: 18px; padding: 12px 14px; border-radius: 8px;
+    background: #e8f5e9; color: #1b5e20; font-size: .95rem; font-weight: 600;
+  }
+
+  .overlay {
+    position: fixed; inset: 0; background: rgba(15, 30, 50, .55);
+    display: flex; align-items: center; justify-content: center; z-index: 999;
+  }
+  /* IMPORTANT : sans cette règle, [hidden] est écrasé par .overlay { display:
+     flex } -> le popup s'afficherait dès le chargement au lieu du seul clic. */
+  .overlay[hidden] { display: none; }
+  .popup {
+    background: #fff; border-radius: 16px; padding: 36px 32px; text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,.2); max-width: 300px;
+  }
+  .popup p { margin: 16px 0 0; font-size: 1.05rem; font-weight: 600; color: #1a3a5c; }
+  .check-circle {
+    stroke: #2e7d32; stroke-width: 3; stroke-dasharray: 151; stroke-dashoffset: 151;
+    animation: tracer-cercle .5s ease forwards;
+  }
+  .check-mark {
+    stroke: #2e7d32; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 40; stroke-dashoffset: 40; animation: tracer-coche .35s ease forwards .45s;
+  }
+  @keyframes tracer-cercle { to { stroke-dashoffset: 0; } }
+  @keyframes tracer-coche  { to { stroke-dashoffset: 0; } }
+</style>
+</head>
+<body>
+  <div class="carte">
+    <h1>E-Prescription</h1>
+    <div class="ref">Ordonnance :</div>
+
+    <dl>
+      {% for champ in champs %}
+      <dt>{{ champ.label }}</dt>
+      <dd>{{ champ.valeur }}</dd>
+      {% endfor %}
+    </dl>
+
+    <button type="button" class="valider" id="btn-valider">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 6 9 17l-5-5"/>
+      </svg>
+      Validez la délivrance.
+    </button>
+
+    <p class="confirmation" id="confirmation" hidden></p>
+  </div>
+
+  <div class="overlay" id="overlay" hidden>
+    <div class="popup">
+      <svg viewBox="0 0 52 52" width="64" height="64">
+        <circle class="check-circle" cx="26" cy="26" r="24" fill="none"/>
+        <path class="check-mark" fill="none" d="M14 27l7 7 16-16"/>
+      </svg>
+      <p>E-Prescription validées</p>
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById('btn-valider');
+    const overlay = document.getElementById('overlay');
+    const confirmation = document.getElementById('confirmation');
+
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      overlay.hidden = false;
+
+      // Validation réelle côté serveur ; on affiche ce qu'il renvoie.
+      let texte = 'Prescription validées.';
+      try {
+        const r = await fetch('/valider/{{ page_id }}', { method: 'POST' });
+        const data = await r.json();
+        texte = 'Prescription délivrée le ' + data.date + ' — code ' + data.code;
+      } catch (e) {
+        texte = 'Prescription délivrée le ' + data.date + ' — code ' + data.code;
+      }
+
+      // Laisse voir l'animation, puis affiche la confirmation SUR la page
+      // (pas de redirection vers un site externe).
+      setTimeout(function () {
+        overlay.hidden = true;
+        confirmation.textContent = texte;
+        confirmation.hidden = false;
+      }, 1600);
+    });
+  </script>
+</body>
+</html>
